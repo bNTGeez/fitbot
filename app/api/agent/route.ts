@@ -1,5 +1,11 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { streamText, tool, convertToModelMessages, UIMessage } from "ai";
+import {
+  streamText,
+  tool,
+  convertToModelMessages,
+  UIMessage,
+  stepCountIs,
+} from "ai";
 import { z } from "zod";
 import { searchWeb } from "@/lib/tools/search";
 import { fetchPageContent } from "@/lib/tools/fetch-page";
@@ -12,6 +18,23 @@ export const runtime = "nodejs";
 const openai = createOpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// Simple timeout wrapper so tool calls can't hang the stream
+async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label: string
+): Promise<T> {
+  return await Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`${label} timed out after ${ms}ms`)),
+        ms
+      )
+    ),
+  ]);
+}
 
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
@@ -41,37 +64,37 @@ export async function POST(req: Request) {
   }
 
   const result = streamText({
-    model: openai("gpt-4o-mini"),
-    system: `You are FitBot, a specialized fitness and gym assistant with access to web search tools.
+    model: openai("gpt-4o"),
+    // Allow up to 6 sequential steps so the model can: search -> fetch 2-3 pages -> answer
+    stopWhen: stepCountIs(6),
+    system: `You are FitBot, a comprehensive fitness and health expert. When users ask about fitness, nutrition, diet, supplements, or health:
 
-SCOPE: You ONLY help with fitness, gym, bodybuilding, nutrition, workout routines, exercise form, supplements, and health topics.
+1. First use the search tool to find relevant information
+2. Then use fetchPage to get detailed content from 2-3 most promising sources
+3. Base your response on the actual page content you fetch
+4. Always cite your sources with specific URLs
 
-QUERY FILTERING:
-1. First, determine if the user's question relates to fitness/gym/health
-2. If OFF-TOPIC (politics, tech, cooking, etc.), politely decline and redirect to fitness topics
-3. If ON-TOPIC, proceed with research workflow
+Format your response in markdown based on the topic:
 
-RESEARCH WORKFLOW (for fitness topics only):
-1. Use search tool to find fitness-related URLs (gym websites, fitness blogs, research studies)
-2. Use fetchPage on 2-5 most promising fitness links from search results
-3. Analyze fetched content: prioritize fitness expertise, scientific studies, certified trainers
-4. Focus on evidence-based information from reputable fitness sources
-5. Cite sources with exact URLs from fetched pages
+### Based on my research:
 
-CONTENT PRIORITIES:
-- Scientific studies and research papers
-- Certified trainer and nutritionist advice
-- Reputable fitness websites (bodybuilding.com, examine.com, etc.)
-- Medical/health institution guidelines
-- Skip low-quality fitness blogs or unverified claims
+**Key Information:**
+- [Main points from fetched content]
+- [Important details from sources]
 
-RESPONSE STYLE:
-- Provide actionable fitness advice
-- Include safety warnings when appropriate
-- Recommend consulting professionals for medical concerns
-- Always cite your fitness sources
+**Recommendations:**
+- [Specific advice from research]
+- [Tips and guidelines found]
 
-If asked about non-fitness topics, respond: "I'm FitBot, specialized in fitness and gym topics. I can help with workouts, nutrition, exercise form, supplements, and health-related questions. What fitness topic would you like to know about?"`,
+**Important Notes:**
+- [Safety considerations if applicable]
+- [When to consult professionals]
+
+### Sources:
+- [URL 1] - [what you found there]
+- [URL 2] - [what you found there]
+
+Adapt the structure based on whether it's about exercises, nutrition, supplements, or general health advice.`,
     messages: convertToModelMessages(messages),
 
     tools: {
@@ -83,7 +106,12 @@ If asked about non-fitness topics, respond: "I'm FitBot, specialized in fitness 
           max_results: z.number().int().min(1).max(5).default(3),
         }),
         async execute({ query, max_results }) {
-          const results = await searchWeb(query, max_results);
+          // Guard with timeout and fallback to empty results
+          const results = await withTimeout(
+            searchWeb(query, max_results),
+            8000,
+            "searchWeb"
+          ).catch(() => ({ total: 0, query, items: [] }));
           return {
             query,
             total: results.total ?? results.items?.length ?? 0,
@@ -97,14 +125,27 @@ If asked about non-fitness topics, respond: "I'm FitBot, specialized in fitness 
           "Fetch and extract fitness/gym content from web pages. Use for fitness articles, workout guides, nutrition info, and exercise research.",
         inputSchema: z.object({ url: z.string() }),
         async execute({ url }) {
-          const page = await fetchPageContent(url);
-          return {
-            title: page.title,
-            url: page.url,
-            content: page.content,
-            wordCount: page.wordCount,
-            publishedAt: page.publishedAt || null,
-          };
+          try {
+            const page = await withTimeout(
+              fetchPageContent(url),
+              12000,
+              "fetchPageContent"
+            );
+            return {
+              title: page.title,
+              url: page.url,
+              content: page.content,
+              wordCount: page.wordCount,
+            };
+          } catch (err) {
+            // Return a safe fallback so the model can proceed without hanging
+            return {
+              title: "Fetch failed",
+              url,
+              content: "",
+              wordCount: 0,
+            };
+          }
         },
       }),
 
@@ -112,7 +153,11 @@ If asked about non-fitness topics, respond: "I'm FitBot, specialized in fitness 
         description: "Persist research notes for later.",
         inputSchema: z.object({ notes: z.string().min(1) }),
         async execute({ notes }) {
-          const result = await saveNotesToFile(notes);
+          const result = await withTimeout(
+            saveNotesToFile(notes),
+            3000,
+            "saveNotesToFile"
+          ).catch(() => ({ success: false }));
           return { success: !!result?.success };
         },
       }),
