@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  email     String   @unique
+  name      String?
+  chats     Chat[]
+}
+
+model Chat {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id])
+  messages  Message[]
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  chatId    Int
+  role      String
+  content   String
+  chat      Chat     @relation(fields: [chatId], references: [id])
+
+  @@index([chatId])
+}
+
+model CachedAnswer {
+  id               Int       @id @default(autoincrement())
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  questionHash     String    @unique
+  originalQuestion String
+  model            String
+  promptVersion    String
+  retrieverVersion String
+  answer           String
+  sources          Json?
+  hitCount         Int       @default(0)
+  lastUsed         DateTime  @default(now())
+  expiresAt        DateTime?
+  isRefreshing     Boolean   @default(false)
+
+  @@index([lastUsed])
+  @@index([hitCount, lastUsed])
+  @@index([expiresAt])
+  @@index([isRefreshing])
+}
+
+model ScrapedSource {
+  id            Int       @id @default(autoincrement())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  url           String
+  urlHash       String    @unique
+  title         String?
+  content       String
+  rawHtml       String?
+  contentLength Int?
+  etag          String?
+  lastModified  DateTime?
+  hitCount      Int       @default(0)
+  scrapedAt     DateTime  @default(now())
+  lastUsed      DateTime  @default(now())
+  expiresAt     DateTime?
+  isRefreshing  Boolean   @default(false)
+
+  @@index([url])
+  @@index([urlHash])
+  @@index([lastUsed])
+  @@index([hitCount, lastUsed])
+  @@index([expiresAt])
+  @@index([isRefreshing])
+}
