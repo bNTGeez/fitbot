@@ -24,6 +24,7 @@ export async function fetchPageContent(url: string): Promise<PageResult> {
   const context = await newContext();
   const page = await context.newPage();
 
+
   try {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 15000 });
     await page.waitForTimeout(1000);
@@ -103,6 +104,10 @@ export async function fetchPageContent(url: string): Promise<PageResult> {
   } catch (error) {
     console.error("Error fetching page:", error);
     throw error;
+  } finally {
+    await page.close();
+    await context.close();
+  }
   } finally {
     await page.close();
     await context.close();

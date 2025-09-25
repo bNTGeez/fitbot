@@ -6,6 +6,13 @@ import {
   UIMessage,
   stepCountIs,
 } from "ai";
+import {
+  streamText,
+  tool,
+  convertToModelMessages,
+  UIMessage,
+  stepCountIs,
+} from "ai";
 import { z } from "zod";
 import { searchWeb } from "@/lib/tools/search";
 import { fetchPageContent } from "@/lib/tools/fetch-page";
@@ -150,6 +157,12 @@ Adapt the structure based on whether it's about exercises, nutrition, supplement
             8000,
             "searchWeb"
           ).catch(() => ({ total: 0, query, items: [] }));
+          // Guard with timeout and fallback to empty results
+          const results = await withTimeout(
+            searchWeb(query, max_results),
+            8000,
+            "searchWeb"
+          ).catch(() => ({ total: 0, query, items: [] }));
           return {
             query,
             total: results.total ?? results.items?.length ?? 0,
@@ -184,6 +197,27 @@ Adapt the structure based on whether it's about exercises, nutrition, supplement
               wordCount: 0,
             };
           }
+          try {
+            const page = await withTimeout(
+              fetchPageContent(url),
+              12000,
+              "fetchPageContent"
+            );
+            return {
+              title: page.title,
+              url: page.url,
+              content: page.content,
+              wordCount: page.wordCount,
+            };
+          } catch (err) {
+            // Return a safe fallback so the model can proceed without hanging
+            return {
+              title: "Fetch failed",
+              url,
+              content: "",
+              wordCount: 0,
+            };
+          }
         },
       }),
 
@@ -191,6 +225,11 @@ Adapt the structure based on whether it's about exercises, nutrition, supplement
         description: "Persist research notes for later.",
         inputSchema: z.object({ notes: z.string().min(1) }),
         async execute({ notes }) {
+          const result = await withTimeout(
+            saveNotesToFile(notes),
+            3000,
+            "saveNotesToFile"
+          ).catch(() => ({ success: false }));
           const result = await withTimeout(
             saveNotesToFile(notes),
             3000,
