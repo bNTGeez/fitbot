@@ -219,10 +219,10 @@ export default function ChatPage({
                   </button>
                   <div>
                     <h1 className="text-xl font-bold text-gray-900">
-                      AI Chat Assistant
+                      FitBot Coach
                     </h1>
                     <p className="text-sm text-gray-600">
-                      Ask me anything about fitness, nutrition, or health!
+                      Your personal fitness and nutrition expert
                     </p>
                     {chat && (
                       <p className="text-xs text-gray-500 mt-1">
@@ -266,7 +266,7 @@ export default function ChatPage({
                         }`}
                       >
                         <div className="font-semibold text-xs mb-1 opacity-75">
-                          {message.role === "user" ? "You" : "AI Assistant"}
+                          {message.role === "user" ? "You" : "FitBot Coach"}
                         </div>
                         <span>
                           <ReactMarkdown>{message.content}</ReactMarkdown>
@@ -312,7 +312,7 @@ export default function ChatPage({
                           }`}
                         >
                           <div className="font-semibold text-xs mb-1 opacity-75">
-                            {message.role === "user" ? "You" : "AI Assistant"}
+                            {message.role === "user" ? "You" : "FitBot Coach"}
                           </div>
                           {showInlineSpinner && (
                             <div className="flex items-center gap-2 text-gray-600 text-xs mb-2">
@@ -333,7 +333,9 @@ export default function ChatPage({
                   {isGenerating &&
                     (!lastMessage || lastMessage.role === "user") && (
                       <div className="p-3 rounded-lg bg-gray-100 mr-8">
-                        <div className="font-semibold text-sm mb-1">AI</div>
+                        <div className="font-semibold text-sm mb-1">
+                          FitBot Coach
+                        </div>
                         <div className="flex items-center gap-2 text-gray-600 text-xs">
                           <span className="inline-block h-3 w-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
                           Generating response...
