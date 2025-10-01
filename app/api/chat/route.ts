@@ -159,3 +159,64 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const authUser = await checkUser();
+    if (!authUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const chatId = searchParams.get("chatId");
+
+    if (!chatId) {
+      return NextResponse.json(
+        { error: "chatId is required" },
+        { status: 400 }
+      );
+    }
+
+    // Get user from database
+    const user = await prisma.user.findUnique({
+      where: { auth0Id: authUser.sub },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Check if chat exists and belongs to user
+    const chat = await prisma.chat.findFirst({
+      where: {
+        id: parseInt(chatId),
+        userId: user.id,
+      },
+    });
+
+    if (!chat) {
+      return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+    }
+
+    // Delete chat and messages
+    await prisma.chat.delete({
+      where: {
+        id: parseInt(chatId),
+      },
+    });
+
+    // Invalidate cache when chat is deleted
+    invalidateChatCache(user.id.toString());
+
+    return NextResponse.json({
+      success: true,
+      message: "Chat deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting chat:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

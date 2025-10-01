@@ -175,29 +175,72 @@ export default function ChatPage({
               New Chat
             </a>
             {chatHistory.map((historyChat) => (
-              <a
+              <div
                 key={historyChat.id}
-                href={`/chat/${historyChat.id}`}
-                className={`block p-3 rounded-md hover:bg-gray-200 transition-colors ${
+                className={`flex items-center justify-between p-3 rounded-md hover:bg-gray-200 transition-colors ${
                   chat?.id === historyChat.id
                     ? "bg-blue-100 border border-blue-300"
                     : ""
                 }`}
               >
-                <div className="text-sm font-medium text-gray-900">
-                  Chat #{historyChat.id}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {new Date(
-                    historyChat.messages[0]?.createdAt || Date.now()
-                  ).toLocaleString()}
-                </div>
-                {historyChat.messages.length > 0 && (
-                  <div className="text-xs text-gray-600 mt-1 line-clamp-2">
-                    {historyChat.messages[0].content.substring(0, 50)}...
+                <a href={`/chat/${historyChat.id}`} className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-gray-900">
+                    Chat #{historyChat.id}
                   </div>
-                )}
-              </a>
+                  <div className="text-xs text-gray-500">
+                    {new Date(
+                      historyChat.messages[0]?.createdAt || Date.now()
+                    ).toLocaleString()}
+                  </div>
+                  {historyChat.messages.length > 0 && (
+                    <div className="text-xs text-gray-600 mt-1 line-clamp-2">
+                      {historyChat.messages[0].content.substring(0, 50)}...
+                    </div>
+                  )}
+                </a>
+                <button
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    if (
+                      confirm(
+                        "Are you sure you want to delete this chat? This action cannot be undone."
+                      )
+                    ) {
+                      try {
+                        const response = await fetch(
+                          `/api/chat?chatId=${historyChat.id}`,
+                          {
+                            method: "DELETE",
+                          }
+                        );
+
+                        if (response.ok) {
+                          // Refresh chat history
+                          const res = await fetch("/api/chat");
+                          const data = await res.json();
+                          if (data.chats) {
+                            setChatHistory(data.chats);
+                          }
+
+                          // If we deleted the current chat, redirect to chat page
+                          if (chat?.id === historyChat.id) {
+                            window.location.href = "/chat";
+                          }
+                        } else {
+                          alert("Failed to delete chat");
+                        }
+                      } catch (error) {
+                        console.error("Error deleting chat:", error);
+                        alert("Error deleting chat");
+                      }
+                    }
+                  }}
+                  className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                  title="Delete chat"
+                >
+                  🗑️
+                </button>
+              </div>
             ))}
           </div>
         </div>

@@ -76,25 +76,63 @@ export default function NewChat() {
               </h2>
               <div className="space-y-2">
                 {chatHistory.slice(0, 5).map((chat) => (
-                  <Link
+                  <div
                     key={chat.id}
-                    href={`/chat/${chat.id}`}
-                    className="block p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    <div className="text-sm font-medium text-gray-900">
-                      Chat #{chat.id}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(
-                        chat.messages[0]?.createdAt || chat.createdAt
-                      ).toLocaleString()}
-                    </div>
-                    {chat.messages.length > 0 && (
-                      <div className="text-xs text-gray-600 mt-1 line-clamp-2">
-                        {chat.messages[0].content.substring(0, 100)}...
+                    <Link href={`/chat/${chat.id}`} className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900">
+                        Chat #{chat.id}
                       </div>
-                    )}
-                  </Link>
+                      <div className="text-xs text-gray-500">
+                        {new Date(
+                          chat.messages[0]?.createdAt || chat.createdAt
+                        ).toLocaleString()}
+                      </div>
+                      {chat.messages.length > 0 && (
+                        <div className="text-xs text-gray-600 mt-1 line-clamp-2">
+                          {chat.messages[0].content.substring(0, 100)}...
+                        </div>
+                      )}
+                    </Link>
+                    <button
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        if (
+                          confirm(
+                            "Are you sure you want to delete this chat? This action cannot be undone."
+                          )
+                        ) {
+                          try {
+                            const response = await fetch(
+                              `/api/chat?chatId=${chat.id}`,
+                              {
+                                method: "DELETE",
+                              }
+                            );
+
+                            if (response.ok) {
+                              // Refresh chat history
+                              const res = await fetch("/api/chat");
+                              const data = await res.json();
+                              if (data.chats) {
+                                setChatHistory(data.chats);
+                              }
+                            } else {
+                              alert("Failed to delete chat");
+                            }
+                          } catch (error) {
+                            console.error("Error deleting chat:", error);
+                            alert("Error deleting chat");
+                          }
+                        }
+                      }}
+                      className="ml-3 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                      title="Delete chat"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
