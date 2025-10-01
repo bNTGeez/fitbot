@@ -2,6 +2,11 @@ export const runtime = "nodejs";
 
 import { checkUser } from "@/lib/checkUser";
 import { prisma } from "@/lib/prisma";
+import {
+  getCachedChatHistory,
+  setCachedChatHistory,
+  invalidateChatCache,
+} from "@/lib/chat-cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
@@ -28,11 +33,17 @@ export async function GET(req: NextRequest) {
       const chat = await prisma.chat.findFirst({
         where: {
           id: parseInt(chatId),
-          userId: user.id,
+          userId: user.id, // Uses Chat_id_userId_idx
         },
         include: {
           messages: {
-            orderBy: { createdAt: "asc" },
+            orderBy: { createdAt: "asc" }, // Uses Message_chatId_createdAt_idx
+            select: {
+              id: true,
+              role: true,
+              content: true,
+              createdAt: true,
+            },
           },
         },
       });
@@ -43,17 +54,32 @@ export async function GET(req: NextRequest) {
 
       return NextResponse.json({ chat });
     } else {
-      // Return user's chat history 
+      // Check cache first
+      const cached = getCachedChatHistory(user.id.toString());
+      if (cached) {
+        return NextResponse.json({ chats: cached });
+      }
+
+      // Return user's chat history
       const chats = await prisma.chat.findMany({
         where: { userId: user.id },
         include: {
           messages: {
             orderBy: { createdAt: "asc" },
             take: 1, // Only first message for preview
+            select: {
+              id: true,
+              content: true,
+              createdAt: true,
+            },
           },
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: "desc" }, // Uses Chat_userId_createdAt_idx
+        take: 20, // Limit to recent chats
       });
+
+      // Cache the result
+      setCachedChatHistory(user.id.toString(), chats);
 
       return NextResponse.json({ chats });
     }
@@ -97,8 +123,9 @@ export async function POST(req: NextRequest) {
     const chat = await prisma.chat.findFirst({
       where: {
         id: parseInt(chatId),
-        userId: user.id,
+        userId: user.id, // Uses Chat_id_userId_idx
       },
+      select: { id: true }, // Only select what we need
     });
 
     if (!chat) {
@@ -112,8 +139,18 @@ export async function POST(req: NextRequest) {
         role,
         content,
       },
+      select: {
+        id: true,
+        role: true,
+        content: true,
+        createdAt: true,
+      },
     });
-    return NextResponse.json({ chat, message });
+
+    // Invalidate cache when new message is added
+    invalidateChatCache(user.id.toString());
+
+    return NextResponse.json({ message });
   } catch (error) {
     console.error("Error saving message:", error);
     return NextResponse.json(
