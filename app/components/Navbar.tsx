@@ -1,5 +1,6 @@
 import { auth0 } from "@/lib/auth0";
 import Link from "next/link";
+import { User } from "lucide-react";
 
 import LoginButton from "@/app/components/LoginButton";
 import LogoutButton from "@/app/components/LogoutButton";
@@ -28,12 +29,14 @@ export default async function Navbar() {
               >
                 Home
               </Link>
-              <Link
-                href="/chat"
-                className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-medium"
-              >
-                Chat
-              </Link>
+              {user && (
+                <Link
+                  href="/chat"
+                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-lg font-medium"
+                >
+                  Chat
+                </Link>
+              )}
             </div>
           </div>
 
@@ -42,7 +45,9 @@ export default async function Navbar() {
             {user ? (
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-700">
-                  Welcome, {user.name}
+                  <Link href="/profile">
+                    <User />
+                  </Link>
                 </span>
                 <LogoutButton />
               </div>

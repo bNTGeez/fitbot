@@ -1,153 +1,104 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
-import { useEffect, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
-export default function Chat() {
-  const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({
-      api: "/api/agent",
-    }),
-  });
-  const [input, setInput] = useState("");
-  const isGenerating = status !== "ready";
-  const lastMessage = messages[messages.length - 1];
-  const hasAssistantStarted =
-    lastMessage?.role === "assistant" &&
-    lastMessage.parts?.some(
-      (p) => p.type === "text" && p.text.trim().length > 0
-    );
+export default function NewChat() {
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
-  // Auto-scroll to bottom when messages change or generation status updates.
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Load chat history
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    // Smoothly scroll to bottom when new content arrives
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [messages, isGenerating]);
+    fetch("/api/chat")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.chats) {
+          setChatHistory(data.chats);
+        }
+      })
+      .catch((err) => console.error("Error loading chat history:", err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const createNewChat = async () => {
+    try {
+      const res = await fetch("/api/chat/new", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (data.chat) {
+        router.push(`/chat/${data.chat.id}`);
+      } else if (data.error) {
+        console.error("Cannot create new chat:", data.error);
+      }
+    } catch (err) {
+      console.error("Error creating chat:", err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="h-screen flex flex-col">
-      <div className="flex-1 max-w-4xl mx-auto w-full p-4 flex flex-col">
-        <div className="bg-white border border-gray-200 rounded-lg shadow-lg flex-1 flex flex-col">
-          {/* Chat Header */}
-          <div className="border-b border-gray-200 p-4 bg-gray-50 rounded-t-lg">
-            <h1 className="text-xl font-bold text-gray-900">
-              AI Chat Assistant
-            </h1>
-            <p className="text-sm text-gray-600">
-              Ask me anything about fitness, nutrition, or health!
-            </p>
-          </div>
+    <div className="h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center max-w-2xl mx-auto p-8">
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          Welcome to Chat
+        </h1>
+        <p className="text-lg text-gray-600 mb-8">
+          Start a new conversation or continue an existing one.
+        </p>
 
-          {/* Chat Messages Area */}
-          <div
-            ref={scrollRef}
-            className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50"
+        <div className="space-y-4">
+          <button
+            onClick={createNewChat}
+            className="w-full bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 transition-colors font-medium text-lg"
           >
-            {messages.map((message, idx) => {
-              const isLast = idx === messages.length - 1;
-              const assistantHasText =
-                message.role === "assistant" &&
-                message.parts?.some(
-                  (p) => p.type === "text" && p.text.trim().length > 0
-                );
-              const showInlineSpinner =
-                isGenerating &&
-                isLast &&
-                message.role === "assistant" &&
-                !assistantHasText;
+            {chatHistory.length === 0
+              ? "Start Your First Chat"
+              : "Start New Chat"}
+          </button>
 
-              const text = message.parts
-                ?.map((p) => (p.type === "text" ? p.text : ""))
-                .join("")
-                .trim();
-              const displayText = text;
-
-              return (
-                <div
-                  key={message.id}
-                  className={`flex ${
-                    message.role === "user" ? "justify-end" : "justify-start"
-                  }`}
-                >
-                  <div
-                    className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl ${
-                      message.role === "user"
-                        ? "bg-blue-500 text-white rounded-br-md"
-                        : "bg-white border border-gray-200 text-gray-900 rounded-bl-md"
-                    }`}
+          {chatHistory.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                Recent Chats
+              </h2>
+              <div className="space-y-2">
+                {chatHistory.slice(0, 5).map((chat) => (
+                  <Link
+                    key={chat.id}
+                    href={`/chat/${chat.id}`}
+                    className="block p-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    <div className="font-semibold text-xs mb-1 opacity-75">
-                      {message.role === "user" ? "You" : "AI Assistant"}
+                    <div className="text-sm font-medium text-gray-900">
+                      Chat #{chat.id}
                     </div>
-                    {showInlineSpinner && (
-                      <div className="flex items-center gap-2 text-gray-600 text-xs mb-2">
-                        <span className="inline-block h-3 w-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                        Generating response...
+                    <div className="text-xs text-gray-500">
+                      {new Date(
+                        chat.messages[0]?.createdAt || chat.createdAt
+                      ).toLocaleString()}
+                    </div>
+                    {chat.messages.length > 0 && (
+                      <div className="text-xs text-gray-600 mt-1 line-clamp-2">
+                        {chat.messages[0].content.substring(0, 100)}...
                       </div>
                     )}
-                    {displayText && (
-                      <span>
-                        <ReactMarkdown>{displayText}</ReactMarkdown>
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-
-            {isGenerating && (!lastMessage || lastMessage.role === "user") && (
-              <div className="p-3 rounded-lg bg-gray-100 mr-8">
-                <div className="font-semibold text-sm mb-1">AI</div>
-                <div className="flex items-center gap-2 text-gray-600 text-xs">
-                  <span className="inline-block h-3 w-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                  Generating response...
-                </div>
+                  </Link>
+                ))}
               </div>
-            )}
-          </div>
-
-          {/* Chat Input Area */}
-          <div className="border-t border-gray-200 p-4 bg-white rounded-b-lg">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (input.trim()) {
-                  console.log("Sending message:", input);
-                  console.log("Current status:", status);
-                  sendMessage({
-                    role: "user",
-                    parts: [{ type: "text", text: input }],
-                  });
-                  setInput("");
-                }
-              }}
-              className="flex gap-3"
-            >
-              <input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                disabled={status !== "ready"}
-                placeholder={
-                  status !== "ready"
-                    ? "Generating response..."
-                    : "Type your message here..."
-                }
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <button
-                type="submit"
-                disabled={status !== "ready" || !input.trim()}
-                className="px-6 py-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Send
-              </button>
-            </form>
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

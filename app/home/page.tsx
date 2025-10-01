@@ -1,8 +1,22 @@
+export const runtime = "nodejs";
+
 import { auth0 } from "@/lib/auth0";
+import { getCurrentUser, upsertUser } from "@/lib/db";
 import ChatButton from "@/app/components/ChatButton";
 
 export default async function Home() {
   const session = await auth0.getSession();
+
+  // Test database functionality
+  let dbUser = null;
+  if (session?.user) {
+    try {
+      dbUser = await upsertUser(session.user);
+      console.log("User in database:", dbUser);
+    } catch (error) {
+      console.error("Database error:", error);
+    }
+  }
 
   if (!session) {
     return (
@@ -26,7 +40,7 @@ export default async function Home() {
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Welcome back, {session.user.name}!
           </h1>
-          <p className="text-lg text-gray-600 mb-8">
+          <p className="text-lg text-gray-600 mb-4">
             Ready to start your fitness journey?
           </p>
           <ChatButton />
