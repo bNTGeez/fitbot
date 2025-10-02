@@ -145,6 +145,7 @@ export async function cacheAnswer(
       where: { questionHash },
       update: {
         answer,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         sources: sources as any,
         model: parts.model,
         promptVersion: parts.promptVersion,
@@ -157,6 +158,7 @@ export async function cacheAnswer(
         questionHash,
         originalQuestion,
         answer,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         sources: sources as any,
         model: parts.model,
         promptVersion: parts.promptVersion,
