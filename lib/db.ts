@@ -9,7 +9,11 @@ export async function getCurrentUser() {
   return session.user;
 }
 
-export async function upsertUser(user: any) {
+export async function upsertUser(user: {
+  sub: string;
+  email: string;
+  name?: string;
+}) {
   try {
     const existingUser = await prisma.user.findUnique({
       where: { auth0Id: user.sub },

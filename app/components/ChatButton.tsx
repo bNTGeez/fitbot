@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function ChatButton() {
-  return <a href="/chat">Chat</a>;
+  return <Link href="/chat">Chat</Link>;
 }

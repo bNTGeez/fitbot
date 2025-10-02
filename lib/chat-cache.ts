@@ -1,5 +1,5 @@
 // Simple in-memory cache for chat history
-const chatCache = new Map<string, { data: any; timestamp: number }>();
+const chatCache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_TTL = 30000; // 30 seconds
 
 export function getCachedChatHistory(userId: string) {
@@ -13,7 +13,7 @@ export function getCachedChatHistory(userId: string) {
   return null;
 }
 
-export function setCachedChatHistory(userId: string, data: any) {
+export function setCachedChatHistory(userId: string, data: unknown) {
   const key = `chat-history-${userId}`;
   chatCache.set(key, {
     data,

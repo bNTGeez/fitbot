@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { useEffect, useRef, useState, use } from "react";
 import ReactMarkdown from "react-markdown";
+import Link from "next/link";
 
 interface Message {
   id: number;
@@ -77,11 +78,6 @@ export default function ChatPage({
   const [input, setInput] = useState("");
   const isGenerating = status !== "ready";
   const lastMessage = messages[messages.length - 1];
-  const hasAssistantStarted =
-    lastMessage?.role === "assistant" &&
-    lastMessage.parts?.some(
-      (p) => p.type === "text" && p.text.trim().length > 0
-    );
 
   // Load chat history if chatId is provided
   useEffect(() => {
@@ -168,12 +164,12 @@ export default function ChatPage({
             </button>
           </div>
           <div className="space-y-2">
-            <a
+            <Link
               href="/chat"
               className="block w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-center"
             >
               New Chat
-            </a>
+            </Link>
             {chatHistory.map((historyChat) => (
               <div
                 key={historyChat.id}
@@ -183,7 +179,10 @@ export default function ChatPage({
                     : ""
                 }`}
               >
-                <a href={`/chat/${historyChat.id}`} className="flex-1 min-w-0">
+                <Link
+                  href={`/chat/${historyChat.id}`}
+                  className="flex-1 min-w-0"
+                >
                   <div className="text-sm font-medium text-gray-900">
                     Chat #{historyChat.id}
                   </div>
@@ -197,7 +196,7 @@ export default function ChatPage({
                       {historyChat.messages[0].content.substring(0, 50)}...
                     </div>
                   )}
-                </a>
+                </Link>
                 <button
                   onClick={async (e) => {
                     e.preventDefault();

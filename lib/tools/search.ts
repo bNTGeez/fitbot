@@ -33,7 +33,11 @@ export async function searchWeb(
       throw new Error(`SerpAPI error: ${data.error || response.statusText}`);
     }
 
-    const organic = (data.organic_results || []) as any[];
+    const organic = (data.organic_results || []) as Array<{
+      title: string;
+      link: string;
+      snippet?: string;
+    }>;
 
     return {
       total: data.search_information?.total_results ?? organic.length,

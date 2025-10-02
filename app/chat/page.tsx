@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function NewChat() {
-  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [chatHistory, setChatHistory] = useState<
+    {
+      id: number;
+      messages: { createdAt: string; content: string }[];
+      createdAt: string;
+    }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 

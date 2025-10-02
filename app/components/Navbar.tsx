@@ -15,7 +15,7 @@ export default async function Navbar() {
         <div className="flex justify-between items-center h-16">
           {/* Navbar Logo */}
           <div className="flex-shrink-0">
-            <Link href="/" className="text-xl font-bold text-gray-900">
+            <Link href="/home" className="text-xl font-bold text-gray-900">
               FitBot
             </Link>
           </div>

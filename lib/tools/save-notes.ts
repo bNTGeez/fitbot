@@ -1,4 +1,4 @@
-export async function saveNotesToFile(notes: string) {
+export async function saveNotesToFile() {
   return {
     success: true,
     filePath: "notes.txt",

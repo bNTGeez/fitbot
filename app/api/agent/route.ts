@@ -175,7 +175,7 @@ Adapt the structure based on whether it's about exercises, nutrition, supplement
               content: page.content,
               wordCount: page.wordCount,
             };
-          } catch (err) {
+          } catch {
             // Return a safe fallback so the model can proceed without hanging
             return {
               title: "Fetch failed",
@@ -190,9 +190,9 @@ Adapt the structure based on whether it's about exercises, nutrition, supplement
       saveNotes: tool({
         description: "Persist research notes for later.",
         inputSchema: z.object({ notes: z.string().min(1) }),
-        async execute({ notes }) {
+        async execute() {
           const result = await withTimeout(
-            saveNotesToFile(notes),
+            saveNotesToFile(),
             3000,
             "saveNotesToFile"
           ).catch(() => ({ success: false }));

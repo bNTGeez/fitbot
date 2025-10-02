@@ -1,7 +1,6 @@
 export const runtime = "nodejs";
 
 import { auth0 } from "@/lib/auth0";
-import { getCurrentUser, upsertUser } from "@/lib/db";
 import ChatButton from "@/app/components/ChatButton";
 
 export default async function Home() {

@@ -129,7 +129,7 @@ export async function cacheAnswer(
   const questionHash = buildCacheKey(parts);
   const expiresAt = createTTL(ttlDays);
 
-  return prisma.$transaction(async (tx: any) => {
+  return prisma.$transaction(async (tx) => {
     // Check if already being refreshed to prevent stampedes
     const existing = await tx.cachedAnswer.findUnique({
       where: { questionHash },
@@ -145,7 +145,7 @@ export async function cacheAnswer(
       where: { questionHash },
       update: {
         answer,
-        sources,
+        sources: sources as any,
         model: parts.model,
         promptVersion: parts.promptVersion,
         retrieverVersion: parts.retrieverVersion,
@@ -157,7 +157,7 @@ export async function cacheAnswer(
         questionHash,
         originalQuestion,
         answer,
-        sources,
+        sources: sources as any,
         model: parts.model,
         promptVersion: parts.promptVersion,
         retrieverVersion: parts.retrieverVersion,
