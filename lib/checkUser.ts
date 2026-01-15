@@ -35,3 +35,35 @@ export async function checkUserWithDb() {
     };
   }
 }
+
+// Ensure user exists in database (auto-creates if missing)
+// This is critical for production - new users need to be created on first use
+export async function ensureUser() {
+  const authUser = await checkUser();
+  if (!authUser) {
+    return null;
+  }
+
+  try {
+    // Try to find existing user
+    let user = await prisma.user.findUnique({
+      where: { auth0Id: authUser.sub },
+    });
+
+    // Create user if doesn't exist
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: authUser.email || "",
+          name: authUser.name || null,
+          auth0Id: authUser.sub,
+        },
+      });
+    }
+
+    return user;
+  } catch (error) {
+    console.error("Error ensuring user exists:", error);
+    return null;
+  }
+}

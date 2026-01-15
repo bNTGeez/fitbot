@@ -1,23 +1,15 @@
 export const runtime = "nodejs";
 
-import { checkUser } from "@/lib/checkUser";
+import { ensureUser } from "@/lib/checkUser";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export async function POST() {
   try {
-    const authUser = await checkUser();
-    if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { auth0Id: authUser.sub },
-    });
-
+    // Ensure user exists in database (auto-creates if needed)
+    const user = await ensureUser();
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Create new chat

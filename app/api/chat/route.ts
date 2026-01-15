@@ -1,6 +1,6 @@
 export const runtime = "nodejs";
 
-import { checkUser } from "@/lib/checkUser";
+import { ensureUser } from "@/lib/checkUser";
 import { prisma } from "@/lib/prisma";
 import {
   getCachedChatHistory,
@@ -11,21 +11,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(req: NextRequest) {
   try {
-    const authUser = await checkUser();
-    if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { searchParams } = new URL(req.url);
     const chatId = searchParams.get("chatId");
 
-    // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { auth0Id: authUser.sub },
-    });
-
+    // Ensure user exists in database (auto-creates if needed)
+    const user = await ensureUser();
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     if (chatId) {
@@ -94,22 +86,14 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const authUser = await checkUser();
-    if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { searchParams } = new URL(req.url);
     const chatId = searchParams.get("chatId");
     const { role, content } = await req.json();
 
-    // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { auth0Id: authUser.sub },
-    });
-
+    // Ensure user exists in database (auto-creates if needed)
+    const user = await ensureUser();
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     if (!chatId) {
@@ -162,11 +146,6 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const authUser = await checkUser();
-    if (!authUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { searchParams } = new URL(req.url);
     const chatId = searchParams.get("chatId");
 
@@ -177,13 +156,10 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Get user from database
-    const user = await prisma.user.findUnique({
-      where: { auth0Id: authUser.sub },
-    });
-
+    // Ensure user exists in database (auto-creates if needed)
+    const user = await ensureUser();
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Check if chat exists and belongs to user
