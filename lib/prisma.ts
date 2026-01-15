@@ -10,10 +10,16 @@ const baseClient = new PrismaClient({
       : ["error"],
 });
 
-// Use Accelerate if DATABASE_URL starts with prisma://
-export const prisma = process.env.DATABASE_URL?.startsWith("prisma://")
-  ? baseClient.$extends(withAccelerate())
-  : baseClient;
+// Create prisma client with optional Accelerate extension
+function createPrismaClient(): PrismaClient {
+  if (process.env.DATABASE_URL?.startsWith("prisma://")) {
+    // Use Accelerate for prisma:// URLs
+    return baseClient.$extends(withAccelerate()) as unknown as PrismaClient;
+  }
+  return baseClient;
+}
+
+export const prisma = createPrismaClient();
 
 if (process.env.NODE_ENV !== "production") {
   if (!globalForPrisma.prisma) {
