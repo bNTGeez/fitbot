@@ -69,20 +69,49 @@ export async function POST(req: Request) {
       lastMessage.parts?.[0]?.type === "text" ? lastMessage.parts[0].text : "";
     const scope = checkScope(userQuestion);
 
+    // If keywords match, proceed (handles misspellings via token matching)
+    // If no keywords match, do a lightweight LLM scope check for ambiguous cases
     if (!scope.isInScope) {
-      // Return a proper streaming response for out-of-scope queries
-      const result = streamText({
+      // Quick LLM check: is this fitness-related?
+      const scopeCheck = await streamText({
         model: openai("gpt-4o-mini"),
-        messages: convertToModelMessages(messages),
-        system: `You are FitBot. The user asked about something outside of fitness/gym topics. 
-      
-      Respond with: "${scope.reply}"
-      
-      Do not use any tools. Just give this exact response.`,
-        tools: {}, // No tools for out-of-scope queries
+        messages: [
+          {
+            role: "system",
+            content: `You are a scope checker for FitBot, a fitness and gym assistant. 
+
+Determine if the user's question is about fitness, gym, workouts, exercise, nutrition, diet, supplements, or health-related topics.
+
+Examples of IN-SCOPE: "how to train legs", "best chest exercises", "nutrition advice", "workout plan", "how to build muscle"
+Examples of OUT-OF-SCOPE: "tell me a joke", "how to code in Python", "what's the weather", "general knowledge questions"
+
+Respond with ONLY the word "yes" if it's fitness-related, or ONLY the word "no" if it's not.`,
+          },
+          {
+            role: "user",
+            content: userQuestion,
+          },
+        ],
       });
 
-      return result.toUIMessageStreamResponse();
+      const scopeResult = (await scopeCheck.text).trim().toLowerCase();
+      const isFitnessRelated = scopeResult === "yes" || scopeResult.startsWith("yes");
+
+      if (!isFitnessRelated) {
+        // Out of scope - return polite decline
+        const result = streamText({
+          model: openai("gpt-4o-mini"),
+          messages: convertToModelMessages(messages),
+          system: `You are FitBot, focused exclusively on fitness and gym topics (workouts, exercise form, programs, nutrition). 
+      
+The user asked about something outside your scope. Politely decline and redirect them to fitness topics.
+
+Example response: "I'm FitBot, your fitness and nutrition expert! I specialize in workouts, exercise form, training programs, and nutrition advice. How can I help you with your fitness goals today?"`,
+          tools: {},
+        });
+
+        return result.toUIMessageStreamResponse();
+      }
     }
 
     // 1. Check cache first
@@ -114,9 +143,11 @@ export async function POST(req: Request) {
       model: openai("gpt-4o-mini"),
       // Allow up to 6 sequential steps so the model can: search -> fetch 2-3 pages -> answer
       stopWhen: stepCountIs(6),
-      system: `You are FitBot, a comprehensive fitness and health expert. When users ask about fitness, nutrition, diet, supplements, or health:
+      system: `You are FitBot, a comprehensive fitness and health expert. You ONLY answer questions about fitness, gym, workouts, exercise, nutrition, diet, supplements, or health-related topics.
 
-**WORKFLOW:**
+**IMPORTANT:** If a user asks about anything outside of fitness/gym topics (like programming, weather, jokes, general knowledge, etc.), you must politely decline and redirect them to fitness topics. Do NOT answer off-topic questions.
+
+**WORKFLOW (for fitness questions only):**
 1. Use search tool to find relevant information
 2. Use fetchPage to get detailed content from 2-3 most promising sources  
 3. Base your response on the actual page content you fetch

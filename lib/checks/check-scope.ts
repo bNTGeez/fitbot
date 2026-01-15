@@ -3,7 +3,7 @@ export type CheckScopeResult = {
   reason?: string;
   reply?: string;
   matched?: string; // what matched (for debugging)
-  via?: "phrase" | "token";
+  via?: "phrase" | "token" | "llm-check";
 };
 
 /** 1) Normalize user text so regex is easier to write. */
@@ -41,6 +41,7 @@ const PHRASES = [
   "working out",
   "exercise",
   "training",
+  "train",
   "fitness",
   "program",
   "routine",
@@ -86,6 +87,8 @@ const PHRASES = [
   "glutes",
   "quads",
   "hamstrings",
+  "legs",
+  "leg",
   "abs",
   "core",
 
@@ -120,6 +123,7 @@ const TOKENS = new Set([
   "workout",
   "exercise",
   "training",
+  "train",
   "gym",
   "fitness",
   "routine",
@@ -176,6 +180,8 @@ const TOKENS = new Set([
   "glutes",
   "quads",
   "hamstrings",
+  "legs",
+  "leg",
   "calves",
   "protein",
   "creatine",
@@ -240,11 +246,12 @@ export function checkScope(raw: string): CheckScopeResult {
   const t = tokenHit(q);
   if (t) return { isInScope: true, via: "token", matched: t };
 
-  // 3) out-of-scope
+  // 3) No keyword match - return false so LLM can do a smart scope check
+  // This allows for misspellings, variations, and context understanding
+  // while still catching off-topic questions
   return {
     isInScope: false,
-    reason: "No gym/fitness indicators after normalization",
-    reply:
-      "I'm FitBot, focused on fitness and gym topics (workouts, exercise form, programs, nutrition). Rephrase your question in gym terms?",
+    via: "llm-check" as const,
+    reason: "No explicit keyword match, will use LLM to determine scope",
   };
 }
