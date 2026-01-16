@@ -106,3 +106,7 @@ Questions outside this scope receive a polite redirect message.
 - PostgreSQL hosted on managed cloud database
 - Auth handled via Auth0 (OAuth + JWT)
 - Environment-based configuration for dev / prod parity
+
+Check it out:
+
+https://fitbot-e5sm-752e12k9h-benjamin-tangs-projects.vercel.app/
